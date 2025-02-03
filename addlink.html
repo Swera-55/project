@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Review Analysis System</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+</head>
+<body>
+    <header class="header">
+        <nav>
+            <img src="../html/image/pngwing.com.png" alt="Logo">
+            <div class="topnav">
+                <a href="home.html">Home</a>
+                <a href="about.html">About</a>
+                <a class="active" href="#addlink">Review Analysis</a>
+                <a href="login.html">Login</a>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <div class="add-link-container">
+            <div class="add-link-card">
+                <div style="text-align: center; margin-bottom: 3rem;">
+                    <h3>Review Analysis</h3>
+                    <p style="color: var(--text-secondary); margin-top: 0.5rem;">
+                        Analyze product reviews for sentiment and authenticity
+                    </p>
+                </div>
+
+                <form id="reviewForm" onsubmit="analyzeReview(event)">
+                    <div class="form-group">
+                        <label for="product_link">
+                            <i class="ri-link"></i> Product Link (Optional)
+                        </label>
+                        <input 
+                            type="url" 
+                            id="product_link"
+                            name="product_link" 
+                            placeholder="Enter the product URL">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="review_text">
+                            <i class="ri-chat-1-line"></i> Review Text
+                        </label>
+                        <textarea 
+                            id="review_text"
+                            name="review_text" 
+                            placeholder="Enter the review text" 
+                            required 
+                            rows="5"></textarea>
+                    </div>
+
+                   <button type="submit" style="width: 100%;">
+                        <i class="ri-search-line"></i>
+                        <span class="button-text">Analyze Review</span>
+                    </button>
+                </form>
+
+                <div id="results" style="display: none;">
+                    <h4 style="color: var(--text-primary); font-size: 1.25rem; margin-bottom: 1.5rem;">
+                        <i class="ri-bar-chart-box-line"></i> Analysis Results
+                    </h4>
+                    
+                    <div class="result-item">
+                        <strong>
+                            <i class="ri-emotion-line"></i> Sentiment Score
+                        </strong>
+                        <span id="sentimentScore"></span>
+                    </div>
+                    
+                    <div class="result-item">
+                        <strong>
+                            <i class="ri-shield-check-line"></i> Deception Detection
+                        </strong>
+                        <span id="deceptionResult"></span>
+                    </div>
+                </div>
+
+                <div id="error"></div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        async function analyzeReview(event) {
+            event.preventDefault();
+            
+            const reviewText = document.querySelector('textarea[name="review_text"]').value;
+            const submitButton = document.querySelector('button[type="submit"]');
+            const buttonText = submitButton.querySelector('.button-text');
+            const errorDiv = document.getElementById('error');
+            const resultsDiv = document.getElementById('results');
+            
+            // Add loading state
+            submitButton.classList.add('loading');
+            submitButton.disabled = true;
+            buttonText.textContent = 'Analyzing...';
+            errorDiv.style.display = 'none';
+            resultsDiv.style.display = 'none';
+            
+            try {
+                const response = await fetch('http://localhost:5000/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        text: reviewText
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    resultsDiv.style.display = 'block';
+                    
+                    // Update sentiment score with animation
+                    const sentimentScore = document.getElementById('sentimentScore');
+                    const score = (data.sentiment_score * 100).toFixed(1);
+                    sentimentScore.textContent = `${score}% Positive`;
+                    sentimentScore.style.color = score > 50 ? '#22c55e' : '#ef4444';
+                    
+                    // Update deception result with icon and color
+                    const deceptionSpan = document.getElementById('deceptionResult');
+                    const isDeceptive = data.deception_result !== 'T';
+                    deceptionSpan.innerHTML = isDeceptive ? 
+                        '<i class="ri-error-warning-line"></i> Potentially Deceptive' : 
+                        '<i class="ri-check-line"></i> Likely Truthful';
+                    deceptionSpan.style.backgroundColor = isDeceptive ? '#fee2e2' : '#dcfce7';
+                    deceptionSpan.style.color = isDeceptive ? '#991b1b' : '#166534';
+                    
+                    // Scroll to results
+                    resultsDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                } else {
+                    throw new Error(data.error || 'Unknown error occurred');
+                }
+            } catch (error) {
+                errorDiv.style.display = 'block';
+                errorDiv.innerHTML = `<i class="ri-error-warning-line"></i> Error: ${error.message}. Please make sure the server is running at http://localhost:5000`;
+                console.error('Error:', error);
+            } finally {
+                // Remove loading state
+                submitButton.classList.remove('loading');
+                submitButton.disabled = false;
+                buttonText.textContent = 'Analyze Review';
+            }
+        }
+    </script>
+</body>
+</html>
